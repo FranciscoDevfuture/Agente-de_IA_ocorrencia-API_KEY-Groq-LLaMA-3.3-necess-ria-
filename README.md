@@ -1,0 +1,2 @@
+# Agente-de_IA_ocorrencia-API_KEY-Groq-LLaMA-3.3-necess-ria-
+Desenvolvi uma aplicação web focada na automação de relatórios operacionais de atendimento ao usuário em terminais de transporte público.  O sistema utiliza Inteligência Artificial integrada via API da Groq/LLaMA 3.3 para gerar relatórios formais, padronizados e juridicamente seguros com base nas informações preenchidas pela equipe operacional.
