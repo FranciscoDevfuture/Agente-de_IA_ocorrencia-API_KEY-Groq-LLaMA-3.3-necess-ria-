@@ -25,7 +25,6 @@ O sistema guia o operador por um formulário passo a passo e, ao final, utiliza 
 - **Geração de relatório por IA** no padrão institucional do terminal
 - **Campo de nome do terminal** salvo automaticamente no navegador
 - **Histórico de ocorrências** armazenado localmente — consulte, visualize e exclua registros anteriores
-- **Exportar para PDF** com cabeçalho formatado
 - **Copiar texto** com um clique para colar em qualquer editor
 - **100% offline** após carregamento — só precisa de internet para chamar a IA
 
