@@ -1,9 +1,9 @@
 
-# Agente de IA para Ocorrências
+# Agente de IA para Ocorrências em terminais urbanos
 # App compatível para dispositivos mobile com sistema Android
-Agente de IA para automação de relatários operacionais de Mal Súbito
+Agente de IA para automação de relatórios operacionais de Mal Súbito
 
-# 🚨 Agente de Ocorrências — Terminal
+# 🚨 Agente de Ocorrências 
 
 Gerador inteligente de relatórios de mal súbito para terminais de transporte público. Desenvolvido em HTML puro, roda diretamente no navegador sem necessidade de instalação.
 
