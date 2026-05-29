@@ -102,6 +102,7 @@ agente-ocorrencias/
 ├── agente-ocorrencias.html   # Aplicação completa (arquivo único)
 └── README.md                 # Este arquivo
 ```
+Versão App para dispositivos celulares Android disponível!
 
 ---
 
