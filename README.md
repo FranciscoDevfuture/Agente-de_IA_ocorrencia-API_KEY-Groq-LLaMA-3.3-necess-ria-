@@ -1,5 +1,6 @@
 
-# Agente_Ocorrencias
+# Agente de IA para Ocorrências
+# App compatível para dispositivos mobile com sistema Android
 Agente de IA para automação de relatários operacionais de Mal Súbito
 
 # 🚨 Agente de Ocorrências — Terminal
