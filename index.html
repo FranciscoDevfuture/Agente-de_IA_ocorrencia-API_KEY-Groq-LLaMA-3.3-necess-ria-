@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agente de Ocorrências</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0f14; color: #c8cdd8; font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; }
+  .app { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  .header { border-bottom: 1px solid #1e2330; padding-bottom: 20px; margin-bottom: 28px; }
+  .header-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .header-badge { display:inline-flex; align-items:center; gap:6px; background:#ff3b3b18; border:1px solid #ff3b3b44; color:#ff6b6b; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; padding:4px 10px; border-radius:2px; margin-bottom:12px; }
+  .dot { width:6px; height:6px; background:#ff3b3b; border-radius:50%; animation:blink 1.4s ease-in-out infinite; display:inline-block; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
+  h1 { font-size:22px; font-weight:600; color:#eef0f6; letter-spacing:-0.5px; }
+  h1 span { color:#4d8eff; }
+  .subtitle { font-size:13px; color:#5a6278; margin-top:6px; font-family:'IBM Plex Mono',monospace; }
+  .groq-badge { display:inline-flex; align-items:center; gap:5px; background:#0d1a33; border:1px solid #2a4a6a; color:#4d8eff; font-family:'IBM Plex Mono',monospace; font-size:10px; padding:3px 8px; border-radius:2px; }
+  .btn-historico { background:none; border:1px solid #1e2330; color:#5a6278; border-radius:4px; padding:8px 14px; font-size:12px; font-family:'IBM Plex Mono',monospace; cursor:pointer; white-space:nowrap; }
+  .btn-historico.ativo { border-color:#4d8eff; color:#4d8eff; background:#0d1a33; }
+  .draft-banner { background:#0d2018; border:1px solid #2a5a3a; border-radius:4px; padding:8px 12px; margin-bottom:16px; font-size:12px; color:#4ac97a; font-family:'IBM Plex Mono',monospace; display:flex; justify-content:space-between; align-items:center; }
+  .draft-discard { background:none; border:none; color:#ff6b6b; font-size:11px; cursor:pointer; font-family:monospace; }
+  .step-nav { display:flex; margin-bottom:28px; border:1px solid #1e2330; border-radius:4px; overflow:hidden; }
+  .step-pill { flex:1; padding:8px 4px; text-align:center; font-size:10px; font-family:'IBM Plex Mono',monospace; color:#3a4055; border-right:1px solid #1e2330; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .step-pill:last-child { border-right:none; }
+  .step-pill.done { color:#2a8a5a; background:#0d2018; }
+  .step-pill.active { color:#4d8eff; background:#0d1a33; font-weight:600; }
+  .card { background:#111420; border:1px solid #1e2330; border-radius:6px; padding:24px; margin-bottom:20px; }
+  .card-title { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; color:#4d8eff; letter-spacing:2px; text-transform:uppercase; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+  .card-title::after { content:''; flex:1; height:1px; background:#1e2330; }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:11px; font-weight:500; color:#7a8299; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.8px; }
+  .hint { font-size:11px; color:#3a4a5a; margin-bottom:6px; font-style:italic; display:block; }
+  input, textarea { width:100%; background:#0d0f14; border:1px solid #1e2330; border-radius:4px; color:#c8cdd8; font-family:'IBM Plex Sans',sans-serif; font-size:14px; padding:10px 12px; transition:border-color 0.2s; outline:none; }
+  input:focus, textarea:focus { border-color:#4d8eff; }
+  input::placeholder, textarea::placeholder { color:#2e3348; }
+  textarea { resize:vertical; line-height:1.6; }
+  .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .radio-group { display:flex; gap:8px; flex-wrap:wrap; }
+  .radio-btn { padding:8px 16px; background:#0d0f14; border:1px solid #1e2330; border-radius:4px; color:#5a6278; font-size:13px; cursor:pointer; font-family:'IBM Plex Sans',sans-serif; }
+  .radio-btn.active { background:#0d1a33; border-color:#4d8eff; color:#4d8eff; }
+  .radio-btn.danger { border-color:#ff3b3b44; color:#cc4444; }
+  .radio-btn.danger.active { background:#1a0d0d; border-color:#ff3b3b; color:#ff6b6b; }
+  .dynamic-list { display:flex; flex-direction:column; gap:12px; }
+  .list-item { background:#0d0f14; border:1px solid #1e2330; border-radius:4px; padding:14px; }
+  .list-item-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#3a4055; }
+  .list-item-fields { display:grid; gap:10px; }
+  .list-item .field { margin-bottom:0; }
+  .remove-btn { background:none; border:1px solid #3a2222; color:#7a3a3a; border-radius:3px; width:22px; height:22px; cursor:pointer; font-size:10px; }
+  .add-btn { background:none; border:1px dashed #1e2330; color:#3a4a6a; border-radius:4px; padding:9px; width:100%; cursor:pointer; font-size:12px; font-family:'IBM Plex Mono',monospace; }
+  .nav { display:flex; justify-content:space-between; gap:12px; }
+  .btn { padding:11px 24px; border-radius:4px; font-size:13px; font-weight:500; cursor:pointer; border:none; font-family:'IBM Plex Sans',sans-serif; }
+  .btn-ghost { background:none; border:1px solid #1e2330; color:#5a6278; }
+  .btn-ghost:disabled { opacity:0.3; cursor:not-allowed; }
+  .btn-primary { background:#4d8eff; color:#fff; }
+  .btn-primary:disabled { background:#1a2440; color:#2e3a55; cursor:not-allowed; }
+  .btn-gerar { background:#1a3a5a; color:#fff; width:100%; padding:13px; font-size:14px; font-weight:600; border:none; border-radius:4px; cursor:pointer; }
+  .loading { display:flex; align-items:center; gap:10px; color:#4d8eff; font-family:'IBM Plex Mono',monospace; font-size:12px; padding:20px 0; }
+  .spinner { width:16px; height:16px; border:2px solid #1e2330; border-top-color:#4d8eff; border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .relatorio-edit-wrap { position:relative; margin:16px 0; }
+  .relatorio-textarea { width:100%; background:#0d0f14; border:1px solid #2a3a2a; border-radius:4px; padding:20px; font-size:14px; line-height:1.9; color:#c8cdd8; font-family:'IBM Plex Sans',sans-serif; resize:vertical; outline:none; min-height:220px; }
+  .relatorio-textarea:focus { border-color:#4d8eff; }
+  .edit-badge { position:absolute; top:10px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a4055; background:#111420; border:1px solid #1e2330; padding:2px 8px; border-radius:2px; pointer-events:none; }
+  .action-bar { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:4px; }
+  .btn-copy { background:#0d2018; border:1px solid #2a8a5a; color:#4ac97a; padding:9px 16px; border-radius:4px; font-size:12px; font-family:'IBM Plex Mono',monospace; cursor:pointer; }
+  .btn-reset { background:none; border:1px solid #1e2330; color:#5a6278; padding:9px 16px; border-radius:4px; font-size:12px; font-family:'IBM Plex Mono',monospace; cursor:pointer; }
+  .samu-section { border-top:1px solid #1e2330; padding-top:20px; margin-top:4px; }
+  .api-key-box { background:#111420; border:1px solid #4d8eff33; border-radius:6px; padding:20px; margin-bottom:20px; }
+  .api-key-box p { font-size:13px; color:#7a8299; margin-bottom:12px; line-height:1.7; }
+  .api-key-box a { color:#4d8eff; }
+  .key-row { display:flex; gap:8px; }
+  .btn-save { background:#4d8eff; color:#fff; border:none; border-radius:4px; padding:10px 18px; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .btn-save:disabled { background:#1a2440; color:#2e3a55; cursor:not-allowed; }
+  .key-change { font-size:11px; color:#3a4a6a; cursor:pointer; font-family:'IBM Plex Mono',monospace; background:none; border:none; text-decoration:underline; margin-bottom:16px; display:block; }
+  .terminal-bar { background:#0d1220; border:1px solid #1e2a3a; border-radius:4px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+  .terminal-bar label { font-size:11px; color:#4d6a8a; font-family:'IBM Plex Mono',monospace; white-space:nowrap; text-transform:uppercase; letter-spacing:1px; }
+  .terminal-bar input { background:transparent; border:none; border-bottom:1px solid #1e2a3a; border-radius:0; padding:4px 0; font-size:13px; color:#8ab4ff; font-family:'IBM Plex Mono',monospace; }
+  .terminal-bar input:focus { border-bottom-color:#4d8eff; outline:none; }
+  .alerta { background:#1a0d0d; border:1px solid #ff3b3b44; border-radius:4px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#ff8888; line-height:1.6; }
+  .alerta strong { color:#ff6b6b; }
+  .erro { color:#ff6b6b; font-size:13px; padding:12px; background:#1a0d0d; border:1px solid #ff3b3b44; border-radius:4px; line-height:1.6; }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a4a2a; border:1px solid #2a8a5a; color:#4ac97a; font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 24px; border-radius:6px; z-index:999; white-space:nowrap; }
+  .hist-vazio { text-align:center; padding:32px; color:#3a4055; font-family:'IBM Plex Mono',monospace; font-size:13px; }
+  .hist-item { background:#0d0f14; border:1px solid #1e2330; border-radius:4px; padding:16px; margin-bottom:12px; }
+  .hist-item-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
+  .hist-item-nome { font-weight:600; color:#eef0f6; font-size:14px; }
+  .hist-item-data { font-family:'IBM Plex Mono',monospace; font-size:10px; color:#3a4055; white-space:nowrap; }
+  .hist-item-meta { font-size:12px; color:#5a6278; }
+  .hist-item-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .btn-hist-ver { background:#0d1a33; border:1px solid #2a4a6a; color:#4d8eff; padding:6px 12px; border-radius:3px; font-size:11px; font-family:'IBM Plex Mono',monospace; cursor:pointer; }
+  .btn-hist-del { background:none; border:1px solid #3a2222; color:#7a3a3a; padding:6px 12px; border-radius:3px; font-size:11px; font-family:'IBM Plex Mono',monospace; cursor:pointer; }
+  .hist-count { font-family:'IBM Plex Mono',monospace; font-size:11px; color:#3a4055; margin-bottom:16px; }
+  .modal-overlay { position:fixed; inset:0; background:#00000099; z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal { background:#111420; border:1px solid #1e2330; border-radius:8px; max-width:680px; width:100%; max-height:90vh; overflow-y:auto; padding:24px; }
+  .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .modal-title { font-family:'IBM Plex Mono',monospace; font-size:12px; color:#4d8eff; font-weight:600; letter-spacing:1px; }
+  .modal-close { background:none; border:1px solid #1e2330; color:#5a6278; border-radius:3px; width:28px; height:28px; cursor:pointer; font-size:14px; }
+  @media(max-width:540px){ .row-2{grid-template-columns:1fr} .step-pill{font-size:8px;padding:6px 2px} .action-bar{flex-direction:column} .action-bar button{width:100%;text-align:center;} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const STEPS = ["Dados do Usuário","Estado Clínico","Equipe","SAMU","Desfecho","Relatório"];
+const HIST_KEY = "ocorrencias_historico";
+const TERM_KEY = "ocorrencias_terminal";
+const GROQ_KEY = "groq_key";
+const DRAFT_KEY = "ocorrencias_rascunho";
+const STEP_KEY = "ocorrencias_step";
+
+const emptyForm = () => ({
+  horarioOcorrencia:"", nomeUsuario:"", rgUsuario:"", cpfUsuario:"", idadeUsuario:"",
+  localOcorrencia:"", quemChamou:"", sinaisVitais:"", situacaoUsuario:"",
+  precisaCadeira:"nao", consciente:"sim", nivelConsciente:"", aceitaConducao:"sim", hospitalDestino:"",
+  equipe:[{nome:"",cargo:"",re:""}],
+  samuSolicitado:"nao", horarioSamuContato:"", atendenteSamu:"", protocoloSamu:"",
+  horarioChegadaSamu:"", horarioSaidaSamu:"", placaAmbu:"", prefixoAmbu:"",
+  equipeSamu:[{nome:"",funcao:"",recrea:""}],
+  horarioFinalizacao:"", cientes:[{nome:"",cargo:"",re:""}], observacoesFinais:"",
+});
+
+function loadDraft() {
+  try { const s = localStorage.getItem(DRAFT_KEY); if(s) return JSON.parse(s); } catch {}
+  return null;
+}
+function saveDraft(form) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch {}
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); localStorage.removeItem(STEP_KEY); } catch {}
+}
+function loadStep() {
+  try { return parseInt(localStorage.getItem(STEP_KEY) || "0"); } catch { return 0; }
+}
+function saveStepLS(n) {
+  try { localStorage.setItem(STEP_KEY, String(n)); } catch {}
+}
+function carregarHistorico() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; }
+}
+function salvarHistorico(lista) {
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(lista)); } catch {}
+}
+
+async function copiarTexto(texto) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(texto); return true; } catch {}
+  }
+  const ta = document.createElement("textarea");
+  ta.value = texto; ta.setAttribute("readonly","");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+  document.body.appendChild(ta);
+  ta.focus(); ta.select(); ta.setSelectionRange(0,99999);
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  return ok;
+}
+
+async function gerarComGroq(apiKey, form, terminal) {
+  const inconsciente = form.consciente === "nao";
+  const prompt = `Você é um agente especializado em redigir relatórios de ocorrências de mal súbito em terminais de transporte público.
+
+Redija um relatório formal em português, em parágrafos corridos, sem listas, sem markdown, sem asteriscos e sem títulos. Linguagem institucional, objetiva e juridicamente segura.
+
+REGRAS OBRIGATÓRIAS:
+1. Nunca afirme diagnósticos médicos. Use "relatando", "queixando-se de", "apresentando" para sintomas de usuário consciente.
+2. Se INCONSCIENTE: use apenas linguagem observacional. Nunca use "queixando-se". Nunca mencione aceite de condução.
+3. Não mencione a idade no corpo do texto salvo se relevante.
+4. Se CPF foi informado (diferente de "não informado"), OBRIGATORIAMENTE inclua no relatório junto ao RG assim: "portador do RG nº X e CPF nº Y". Nunca omita o CPF se ele foi fornecido.
+5. Use "aceitou ser conduzido" (nunca "aceitando condução").
+6. Se sinais vitais não foram aferidos, registre: "não foram aferidos os sinais vitais do usuário."
+7. Encerramento objetivo, sem repetições.
+8. Para inconsciente: SAMU como acionamento imediato e necessário.
+
+${terminal ? "TERMINAL: " + terminal : ""}
+CONSCIÊNCIA: ${inconsciente ? "INCONSCIENTE" : "CONSCIENTE"}
+
+DADOS:
+- Horário: ${form.horarioOcorrencia}
+- Nome: ${form.nomeUsuario}
+- RG: ${form.rgUsuario || "não informado"}
+- CPF: ${form.cpfUsuario || "não informado"}
+- Local: ${form.localOcorrencia}
+- Identificação: ${form.quemChamou || "não informado"}
+
+CLÍNICO:
+- ${inconsciente ? "Observado pelos colaboradores" : "Situação relatada/observada"}: ${form.situacaoUsuario}
+- Sinais vitais: ${form.sinaisVitais || "não aferidos"}
+- Cadeira de rodas: ${form.precisaCadeira === "sim" ? "Sim" : "Não"}
+${!inconsciente ? "- Consciência: " + (form.nivelConsciente || "consciente e orientado") + "\n- Condução: " + (form.aceitaConducao === "sim" ? "Aceitou" : form.aceitaConducao === "nao" ? "Recusou" : "N/A") : "- Inconsciente: sem consentimento"}
+- Destino: ${form.hospitalDestino || "não informado"}
+
+EQUIPE:
+${form.equipe.filter(e=>e.nome).map(e=>"- " + e.cargo + ": " + e.nome + ", RE " + e.re).join("\n") || "- Não informado"}
+
+SAMU:
+${form.samuSolicitado === "sim"
+  ? "- Solicitado: Sim\n- Contato: " + form.horarioSamuContato + "\n- Atendente: " + form.atendenteSamu + "\n- Protocolo: " + form.protocoloSamu + "\n- Chegada: " + form.horarioChegadaSamu + "\n- Saída: " + form.horarioSaidaSamu + "\n- Placa: " + form.placaAmbu + " | Prefixo: " + form.prefixoAmbu + "\n- Equipe: " + form.equipeSamu.filter(e=>e.nome).map(e=>e.funcao + " " + e.nome + ", RE/CREA " + e.recrea).join("; ")
+  : "- Não solicitado"}
+
+DESFECHO:
+- Finalização: ${form.horarioFinalizacao || "não informado"}
+- Observações: ${form.observacoesFinais || "nenhuma"}
+
+CIENTES:
+${form.cientes.filter(c=>c.nome).map(c=>"- " + c.cargo + " " + c.nome + " - RE " + c.re).join("\n") || "- Não informado"}
+
+MODELO CONSCIENTE:
+"Por volta das 22h00, o Sr. Marcos, portador do RG nº 9929990993 e CPF nº 123.456.789-00, foi identificado na Plataforma 1 após relatar fortes dores abdominais.
+A equipe composta pelos OTUs Francisco, RE 0292, e Michele, RE 0294, prestou auxílio, encontrando-o consciente e orientado, tendo aceitado ser conduzido. Foi necessária cadeira de rodas. Não foram aferidos os sinais vitais do usuário.
+Foi realizado contato com o SAMU às 22h15, registrado pela atendente Maria, protocolo nº 09999333.
+Às 22h25, compareceu a viatura AMD-0925, placa AMD-0925, composta pelo médico Paulo, RE/CREA 9293, e enfermeira Carla, RE/COREN 93944. O usuário seria encaminhado ao Hospital M'Boi Mirim.
+Ocorrência finalizada às 22h55.
+Ciente: ET Alex Sandro - RE 05."
+
+MODELO INCONSCIENTE:
+"Por volta das 03h12, o Sr. José Lima, portador do RG nº 44.123.456-7, foi encontrado inconsciente na Plataforma 2.
+Os colaboradores Vigilante Rafael, RE 1102, e OTU Cláudio, RE 0387, prestaram auxílio. O usuário encontrava-se inconsciente e sem resposta a estímulos verbais, apresentando respiração irregular. Não foram aferidos os sinais vitais.
+Diante do estado de inconsciência, foi realizado contato imediato com o SAMU às 03h15, protocolo nº 20261102033.
+Às 03h28, compareceu a viatura AM-1134, placa EKF-3391, com o médico Dr. Roberto, RE/CREA 88712, e enfermeira Tatiane, RE/COREN 54923. A equipe assumiu os cuidados, informando encaminhamento ao Hospital Geral de Pedreira.
+Ocorrência finalizada às 03h45.
+Ciente: Sup. Fernanda - RE 228."
+
+Escreva APENAS o relatório. Sem markdown. Ao final: "Ocorrência finalizada às [horário]." e cientes.`;
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer " + apiKey},
+    body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"user",content:prompt}],temperature:0.3,max_tokens:1200})
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message);
+  const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if(!text) throw new Error("Resposta vazia.");
+  return text.replace(/\*\*/g,"").replace(/\*/g,"").replace(/^#+\s/gm,"").trim();
+}
+
+function Inp({label, value, onChange, placeholder, type, hint}) {
+  return (
+    React.createElement("div", {className:"field"},
+      React.createElement("label", null, label),
+      hint && React.createElement("span", {className:"hint"}, hint),
+      React.createElement("input", {type:type||"text", value:value, onChange:function(e){onChange(e.target.value)}, placeholder:placeholder||label})
+    )
+  );
+}
+function TA({label, value, onChange, placeholder, rows, hint}) {
+  return (
+    React.createElement("div", {className:"field"},
+      React.createElement("label", null, label),
+      hint && React.createElement("span", {className:"hint"}, hint),
+      React.createElement("textarea", {rows:rows||3, value:value, onChange:function(e){onChange(e.target.value)}, placeholder:placeholder||label})
+    )
+  );
+}
+function Radio({label, value, options, onChange}) {
+  return (
+    React.createElement("div", {className:"field"},
+      React.createElement("label", null, label),
+      React.createElement("div", {className:"radio-group"},
+        options.map(function(o) {
+          return React.createElement("button", {
+            key:o.v,
+            className:"radio-btn" + (o.danger?" danger":"") + (value===o.v?" active":""),
+            onClick:function(){onChange(o.v)},
+            type:"button"
+          }, o.l);
+        })
+      )
+    )
+  );
+}
+function DList({items, onChange, fields, addLabel}) {
+  function add() { onChange(items.concat([fields.reduce(function(acc,f){acc[f.key]="";return acc;},{})])); }
+  function rem(i) { onChange(items.filter(function(_,idx){return idx!==i;})); }
+  function upd(i,k,v) { var a=items.slice(); a[i]=Object.assign({},a[i],{[k]:v}); onChange(a); }
+  var cols = fields.length===2 ? "1fr 1fr" : "1fr 1fr 1fr";
+  return (
+    React.createElement("div", {className:"dynamic-list"},
+      items.map(function(item,i) {
+        return React.createElement("div", {key:i, className:"list-item"},
+          React.createElement("div", {className:"list-item-header"},
+            React.createElement("span", null, "#"+(i+1)),
+            items.length>1 && React.createElement("button", {className:"remove-btn", onClick:function(){rem(i)}, type:"button"}, "✕")
+          ),
+          React.createElement("div", {className:"list-item-fields", style:{gridTemplateColumns:cols}},
+            fields.map(function(f) {
+              return React.createElement("div", {className:"field", key:f.key},
+                React.createElement("label", null, f.label),
+                React.createElement("input", {type:"text", value:item[f.key]||"", onChange:function(e){upd(i,f.key,e.target.value)}, placeholder:f.ph||f.label})
+              );
+            })
+          )
+        );
+      }),
+      React.createElement("button", {className:"add-btn", onClick:add, type:"button"}, "+ "+addLabel)
+    )
+  );
+}
+function Toast({msg}) {
+  return React.createElement("div", {className:"toast"}, msg);
+}
+
+function ModalRelatorio({item, onClose}) {
+  var _s = useState(item.relatorio);
+  var texto = _s[0]; var setTexto = _s[1];
+  var _t = useState("");
+  var toast = _t[0]; var setToast = _t[1];
+
+  function mostrarToast(msg) { setToast(msg); setTimeout(function(){setToast("");},2000); }
+  async function copiar() {
+    var ok = await copiarTexto(texto);
+    mostrarToast(ok ? "✓ Texto copiado!" : "Selecione e copie manualmente");
+  }
+
+  return (
+    React.createElement("div", {className:"modal-overlay", onClick:onClose},
+      toast && React.createElement(Toast, {msg:toast}),
+      React.createElement("div", {className:"modal", onClick:function(e){e.stopPropagation();}},
+        React.createElement("div", {className:"modal-header"},
+          React.createElement("span", {className:"modal-title"}, (item.terminal||"RELATÓRIO")+" — "+item.data),
+          React.createElement("button", {className:"modal-close", onClick:onClose}, "✕")
+        ),
+        React.createElement("div", {style:{fontSize:13,color:"#5a6278",marginBottom:12,fontFamily:"monospace"}},
+          "Usuário: "+item.nomeUsuario+(item.inconsciente?" · ⚠ Inconsciente":"")
+        ),
+        React.createElement("div", {className:"relatorio-edit-wrap"},
+          React.createElement("textarea", {className:"relatorio-textarea", value:texto, onChange:function(e){setTexto(e.target.value)}}),
+          React.createElement("span", {className:"edit-badge"}, "editável")
+        ),
+        React.createElement("div", {className:"action-bar"},
+          React.createElement("button", {className:"btn-copy", onClick:copiar}, "Copiar texto")
+        )
+      )
+    )
+  );
+}
+
+function TelaHistorico({onNova}) {
+  var _l = useState(carregarHistorico());
+  var lista = _l[0]; var setLista = _l[1];
+  var _m = useState(null);
+  var modal = _m[0]; var setModal = _m[1];
+
+  function del(id,e) {
+    e.stopPropagation();
+    if(!window.confirm("Excluir esta ocorrência?")) return;
+    var nova = lista.filter(function(i){return i.id!==id;});
+    setLista(nova); salvarHistorico(nova);
+  }
+  function limpar() {
+    if(!window.confirm("Limpar todo o histórico?")) return;
+    setLista([]); salvarHistorico([]);
+  }
+
+  return (
+    React.createElement(React.Fragment, null,
+      modal && React.createElement(ModalRelatorio, {item:modal, onClose:function(){setModal(null);}}),
+      React.createElement("div", {className:"card"},
+        React.createElement("div", {className:"card-title"}, "Histórico de Ocorrências"),
+        lista.length === 0
+          ? React.createElement("div", {className:"hist-vazio"}, "Nenhuma ocorrência salva ainda.")
+          : React.createElement(React.Fragment, null,
+              React.createElement("div", {className:"hist-count"}, lista.length+" ocorrência"+(lista.length!==1?"s":"")+" salva"+(lista.length!==1?"s":"")),
+              lista.slice().reverse().map(function(item) {
+                return React.createElement("div", {key:item.id, className:"hist-item"},
+                  React.createElement("div", {className:"hist-item-header"},
+                    React.createElement("div", {className:"hist-item-nome"}, item.nomeUsuario),
+                    React.createElement("div", {className:"hist-item-data"}, item.data)
+                  ),
+                  React.createElement("div", {className:"hist-item-meta"},
+                    (item.terminal?"📍 "+item.terminal+" · ":"")+"🕐 "+item.horario+" · 📌 "+item.local+(item.inconsciente?" · ⚠ Inconsciente":"")
+                  ),
+                  React.createElement("div", {className:"hist-item-actions"},
+                    React.createElement("button", {className:"btn-hist-ver", onClick:function(){setModal(item);}}, "Ver / Editar"),
+                    React.createElement("button", {className:"btn-hist-del", onClick:function(e){del(item.id,e);}}, "Excluir")
+                  )
+                );
+              }),
+              React.createElement("div", {style:{marginTop:16,textAlign:"right"}},
+                React.createElement("button", {className:"btn-reset", onClick:limpar}, "Limpar histórico")
+              )
+            )
+      ),
+      React.createElement("div", {style:{textAlign:"center"}},
+        React.createElement("button", {className:"btn btn-primary", onClick:onNova}, "+ Nova Ocorrência")
+      )
+    )
+  );
+}
+
+function App() {
+  var draft = loadDraft();
+  var _step = useState(draft ? loadStep() : 0);
+  var step = _step[0]; var setStepState = _step[1];
+  var _form = useState(draft || emptyForm());
+  var form = _form[0]; var setForm = _form[1];
+  var _tela = useState("form");
+  var tela = _tela[0]; var setTela = _tela[1];
+  var _loading = useState(false);
+  var loading = _loading[0]; var setLoading = _loading[1];
+  var _rel = useState("");
+  var relatorio = _rel[0]; var setRelatorio = _rel[1];
+  var _erro = useState("");
+  var erro = _erro[0]; var setErro = _erro[1];
+  var _toast = useState("");
+  var toast = _toast[0]; var setToast = _toast[1];
+  var _apiKey = useState(localStorage.getItem(GROQ_KEY)||"");
+  var apiKey = _apiKey[0]; var setApiKey = _apiKey[1];
+  var _showKey = useState(!localStorage.getItem(GROQ_KEY));
+  var showKey = _showKey[0]; var setShowKey = _showKey[1];
+  var _terminal = useState(localStorage.getItem(TERM_KEY)||"");
+  var terminal = _terminal[0]; var setTerminal = _terminal[1];
+  var _hasDraft = useState(!!draft);
+  var hasDraft = _hasDraft[0]; var setHasDraft = _hasDraft[1];
+
+  useEffect(function(){
+    if(terminal) localStorage.setItem(TERM_KEY, terminal);
+  }, [terminal]);
+
+  var inconsciente = form.consciente === "nao";
+
+  function setStep(n) { saveStepLS(n); setStepState(n); }
+
+  function updateForm(k, v) {
+    setForm(function(f) {
+      var updated = Object.assign({}, f, {[k]: v});
+      saveDraft(updated);
+      return updated;
+    });
+  }
+
+  function mostrarToast(msg) { setToast(msg); setTimeout(function(){setToast("");},2200); }
+
+  async function copiar() {
+    var ok = await copiarTexto(relatorio);
+    mostrarToast(ok ? "✓ Texto copiado!" : "Selecione e copie manualmente");
+  }
+
+  function nova() {
+    clearDraft();
+    setStep(0); setForm(emptyForm()); setRelatorio(""); setErro("");
+    setTela("form"); setHasDraft(false);
+  }
+
+  function saveKey() { localStorage.setItem(GROQ_KEY, apiKey); setShowKey(false); }
+
+  function canNext() {
+    if(step===0) return form.horarioOcorrencia && form.nomeUsuario && form.localOcorrencia;
+    if(step===1) return form.situacaoUsuario;
+    if(step===2) return form.equipe[0] && form.equipe[0].nome;
+    return true;
+  }
+
+  async function gerar() {
+    if(!apiKey){ setShowKey(true); return; }
+    setLoading(true); setErro(""); setRelatorio("");
+    try {
+      var texto = await gerarComGroq(apiKey, form, terminal);
+      setRelatorio(texto);
+      clearDraft(); setHasDraft(false);
+      var hist = carregarHistorico();
+      hist.push({id:Date.now(), data:new Date().toLocaleString("pt-BR"), nomeUsuario:form.nomeUsuario, horario:form.horarioOcorrencia, local:form.localOcorrencia, terminal:terminal, relatorio:texto, inconsciente:inconsciente});
+      salvarHistorico(hist);
+    } catch(e) { setErro("Erro: "+e.message); }
+    setLoading(false);
+  }
+
+  function next() {
+    if(step===4){ setStep(5); setTimeout(gerar,100); }
+    else setStep(step+1);
+  }
+
+  var equipeFields = [{key:"cargo",label:"Cargo",ph:"Vigilante, OTU, CAM"},{key:"nome",label:"Nome",ph:"Nome completo"},{key:"re",label:"RE",ph:"Ex: 4520"}];
+  var samuFields = [{key:"funcao",label:"Função",ph:"Médico, Enfermeira"},{key:"nome",label:"Nome",ph:"Nome completo"},{key:"recrea",label:"RE/CREA",ph:"Ex: 23.633.229-06"}];
+  var cientesFields = [{key:"cargo",label:"Cargo",ph:"E.T., Supervisor"},{key:"nome",label:"Nome",ph:"Nome completo"},{key:"re",label:"RE",ph:"Ex: 111"}];
+
+  return (
+    React.createElement("div", {className:"app"},
+      toast && React.createElement(Toast, {msg:toast}),
+
+      React.createElement("div", {className:"header"},
+        React.createElement("div", {className:"header-top"},
+          React.createElement("div", null,
+            React.createElement("div", {className:"header-badge"}, React.createElement("span", {className:"dot"}), " Sistema Ativo"),
+            React.createElement("h1", null, "Agente de ", React.createElement("span", null, "Ocorrências")),
+            React.createElement("p", {className:"subtitle"}, "// Gerador de relatórios de mal súbito • Terminal")
+          ),
+          React.createElement("button", {
+            className:"btn-historico"+(tela==="historico"?" ativo":""),
+            onClick:function(){setTela(tela==="historico"?"form":"historico");}
+          }, tela==="historico"?"← Voltar":"📋 Histórico")
+        )
+      ),
+
+      React.createElement("div", {className:"terminal-bar"},
+        React.createElement("label", null, "Terminal"),
+        React.createElement("input", {type:"text", value:terminal, onChange:function(e){setTerminal(e.target.value)}, placeholder:"Ex: Terminal Jabaquara"})
+      ),
+
+      tela==="form" && (
+        showKey
+          ? React.createElement("div", {className:"api-key-box"},
+              React.createElement("div", {className:"card-title"}, "Chave da API — Groq"),
+              React.createElement("p", null, "Obtenha sua chave gratuita em: ", React.createElement("a", {href:"https://console.groq.com/keys", target:"_blank"}, "console.groq.com/keys"), ". Crie uma conta → Create API Key → cole abaixo."),
+              React.createElement("div", {className:"key-row"},
+                React.createElement("input", {type:"password", value:apiKey, onChange:function(e){setApiKey(e.target.value)}, placeholder:"gsk_..."}),
+                React.createElement("button", {className:"btn-save", onClick:saveKey, disabled:apiKey.length<10}, "Salvar")
+              )
+            )
+          : React.createElement(React.Fragment, null,
+              React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:hasDraft&&step<5?8:16}},
+                React.createElement("span", {className:"groq-badge"}, "⚡ Groq — LLaMA 3.3 70B"),
+                React.createElement("button", {className:"key-change", onClick:function(){setShowKey(true);}}, "🔑 Alterar chave")
+              ),
+              hasDraft && step < 5 && React.createElement("div", {className:"draft-banner"},
+                React.createElement("span", null, "📝 Rascunho recuperado — continue de onde parou"),
+                React.createElement("button", {className:"draft-discard", onClick:nova}, "Descartar")
+              )
+            )
+      ),
+
+      tela==="historico" && React.createElement(TelaHistorico, {onNova:nova}),
+
+      tela==="form" && React.createElement(React.Fragment, null,
+
+        React.createElement("div", {className:"step-nav"},
+          STEPS.map(function(s,i) {
+            return React.createElement("div", {key:i, className:"step-pill"+(i<step?" done":i===step?" active":"")},
+              i<step?"✓":(i+1)+" ", s
+            );
+          })
+        ),
+
+        step===0 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "Dados do Usuário"),
+          React.createElement("div", {className:"row-2"},
+            React.createElement(Inp, {label:"Horário da Ocorrência *", value:form.horarioOcorrencia, onChange:function(v){updateForm("horarioOcorrencia",v)}, placeholder:"Ex: 02h04"}),
+            React.createElement(Inp, {label:"Idade", value:form.idadeUsuario, onChange:function(v){updateForm("idadeUsuario",v)}, placeholder:"Ex: 67 anos"})
+          ),
+          React.createElement(Inp, {label:"Nome completo *", value:form.nomeUsuario, onChange:function(v){updateForm("nomeUsuario",v)}, placeholder:"Nome completo"}),
+          React.createElement("div", {className:"row-2"},
+            React.createElement(Inp, {label:"RG", value:form.rgUsuario, onChange:function(v){updateForm("rgUsuario",v)}, placeholder:"00.000.000-0"}),
+            React.createElement(Inp, {label:"CPF", value:form.cpfUsuario, onChange:function(v){updateForm("cpfUsuario",v)}, placeholder:"000.000.000-00"})
+          ),
+          React.createElement(Inp, {label:"Local da ocorrência *", value:form.localOcorrencia, onChange:function(v){updateForm("localOcorrencia",v)}, placeholder:"Ex: Plataforma 03, próximo ao PMD 38"}),
+          React.createElement(Inp, {label:"Como foi identificado / quem chamou", value:form.quemChamou, onChange:function(v){updateForm("quemChamou",v)}, placeholder:"Ex: sofreu uma queda"})
+        ),
+
+        step===1 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "Estado Clínico"),
+          React.createElement(Radio, {label:"Está consciente?", value:form.consciente, onChange:function(v){updateForm("consciente",v)},
+            options:[{v:"sim",l:"Sim — consciente"},{v:"nao",l:"Não — inconsciente",danger:true}]}),
+          inconsciente && React.createElement("div", {className:"alerta"},
+            React.createElement("strong", null, "⚠ Usuário inconsciente"), " — descreva apenas o que foi observado pelos colaboradores. SAMU obrigatório."
+          ),
+          React.createElement(TA, {
+            label:inconsciente?"O que foi observado *":"Situação relatada / observada *",
+            value:form.situacaoUsuario, onChange:function(v){updateForm("situacaoUsuario",v)},
+            hint:inconsciente?"Ex: sem resposta, respiração ofegante, palidez":"Ex: queixando-se de dores abdominais, desequilíbrio",
+            rows:3
+          }),
+          !inconsciente && React.createElement(Inp, {label:"Nível de consciência (opcional)", value:form.nivelConsciente, onChange:function(v){updateForm("nivelConsciente",v)}, placeholder:"Ex: orientado, confuso, sonolento"}),
+          React.createElement(Inp, {label:"Sinais vitais (vazio = não aferidos)", value:form.sinaisVitais, onChange:function(v){updateForm("sinaisVitais",v)}, placeholder:"Ex: PA 130/90, FC 88bpm"}),
+          React.createElement(Radio, {label:"Necessita cadeira de rodas?", value:form.precisaCadeira, onChange:function(v){updateForm("precisaCadeira",v)},
+            options:[{v:"sim",l:"Sim"},{v:"nao",l:"Não"}]}),
+          !inconsciente && React.createElement(Radio, {label:"Aceitou ser conduzido?", value:form.aceitaConducao, onChange:function(v){updateForm("aceitaConducao",v)},
+            options:[{v:"sim",l:"Sim"},{v:"nao",l:"Não"},{v:"na",l:"N/A"}]}),
+          React.createElement(Inp, {label:"Hospital / UPA de destino", value:form.hospitalDestino, onChange:function(v){updateForm("hospitalDestino",v)}, placeholder:"Ex: UPA Santo Amaro"})
+        ),
+
+        step===2 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "Equipe de Atendimento"),
+          React.createElement(DList, {items:form.equipe, onChange:function(v){updateForm("equipe",v)}, fields:equipeFields, addLabel:"Adicionar colaborador"})
+        ),
+
+        step===3 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "SAMU"),
+          inconsciente && React.createElement("div", {className:"alerta", style:{marginBottom:16}},
+            React.createElement("strong", null, "⚠ Inconsciente"), " — acionamento do SAMU é obrigatório."
+          ),
+          React.createElement(Radio, {label:"SAMU foi solicitado?", value:form.samuSolicitado, onChange:function(v){updateForm("samuSolicitado",v)},
+            options:[{v:"sim",l:"Sim"},{v:"nao",l:"Não"}]}),
+          form.samuSolicitado==="sim" && React.createElement("div", {className:"samu-section"},
+            React.createElement("div", {className:"row-2"},
+              React.createElement(Inp, {label:"Horário do contato", value:form.horarioSamuContato, onChange:function(v){updateForm("horarioSamuContato",v)}, placeholder:"Ex: 02h08"}),
+              React.createElement(Inp, {label:"Atendente SAMU", value:form.atendenteSamu, onChange:function(v){updateForm("atendenteSamu",v)}, placeholder:"Nome da atendente"})
+            ),
+            React.createElement(Inp, {label:"Número do protocolo", value:form.protocoloSamu, onChange:function(v){updateForm("protocoloSamu",v)}, placeholder:"Ex: 20260694054"}),
+            React.createElement("div", {className:"row-2"},
+              React.createElement(Inp, {label:"Horário de chegada", value:form.horarioChegadaSamu, onChange:function(v){updateForm("horarioChegadaSamu",v)}, placeholder:"Ex: 02h48"}),
+              React.createElement(Inp, {label:"Horário de saída", value:form.horarioSaidaSamu, onChange:function(v){updateForm("horarioSaidaSamu",v)}, placeholder:"Ex: 02h54"})
+            ),
+            React.createElement("div", {className:"row-2"},
+              React.createElement(Inp, {label:"Placa da ambulância", value:form.placaAmbu, onChange:function(v){updateForm("placaAmbu",v)}, placeholder:"Ex: DJM-5625"}),
+              React.createElement(Inp, {label:"Prefixo", value:form.prefixoAmbu, onChange:function(v){updateForm("prefixoAmbu",v)}, placeholder:"Ex: AM-0945"})
+            ),
+            React.createElement("div", {style:{marginTop:16}},
+              React.createElement("div", {className:"field"}, React.createElement("label", null, "Equipe do SAMU")),
+              React.createElement(DList, {items:form.equipeSamu, onChange:function(v){updateForm("equipeSamu",v)}, fields:samuFields, addLabel:"Adicionar membro"})
+            )
+          )
+        ),
+
+        step===4 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "Desfecho & Cientes"),
+          React.createElement(Inp, {label:"Horário de finalização", value:form.horarioFinalizacao, onChange:function(v){updateForm("horarioFinalizacao",v)}, placeholder:"Ex: 02h54"}),
+          React.createElement(TA, {label:"Observações finais", value:form.observacoesFinais, onChange:function(v){updateForm("observacoesFinais",v)}, placeholder:"Informações adicionais relevantes..."}),
+          React.createElement("div", {className:"field", style:{marginTop:8}}, React.createElement("label", null, "Cientes da ocorrência")),
+          React.createElement(DList, {items:form.cientes, onChange:function(v){updateForm("cientes",v)}, fields:cientesFields, addLabel:"Adicionar ciente"})
+        ),
+
+        step===5 && React.createElement("div", {className:"card"},
+          React.createElement("div", {className:"card-title"}, "Relatório Final"),
+          loading && React.createElement("div", {className:"loading"}, React.createElement("div", {className:"spinner"}), "Gerando relatório..."),
+          erro && React.createElement("div", {className:"erro"}, erro, React.createElement("br"), React.createElement("br"),
+            React.createElement("button", {className:"btn-gerar", onClick:gerar, style:{marginTop:4}}, "Tentar novamente")
+          ),
+          relatorio && React.createElement(React.Fragment, null,
+            React.createElement("div", {className:"relatorio-edit-wrap"},
+              React.createElement("textarea", {className:"relatorio-textarea", value:relatorio, onChange:function(e){setRelatorio(e.target.value)}}),
+              React.createElement("span", {className:"edit-badge"}, "editável")
+            ),
+            React.createElement("div", {className:"action-bar"},
+              React.createElement("button", {className:"btn-reset", onClick:nova}, "Nova ocorrência"),
+              React.createElement("button", {className:"btn-reset", onClick:function(){setTela("historico");}}, "Ver histórico"),
+              React.createElement("button", {className:"btn-copy", onClick:copiar}, "Copiar texto")
+            )
+          ),
+          !loading && !relatorio && !erro && React.createElement("button", {className:"btn-gerar", onClick:gerar}, "⚡ Gerar Relatório com Groq")
+        ),
+
+        step < 5 && React.createElement("div", {className:"nav"},
+          React.createElement("button", {className:"btn btn-ghost", onClick:function(){setStep(Math.max(0,step-1));}, disabled:step===0}, "← Voltar"),
+          React.createElement("button", {className:"btn btn-primary", onClick:next, disabled:!canNext()},
+            step===4 ? "Gerar Relatório →" : "Próximo →"
+          )
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
+</script>
+</body>
+</html>
