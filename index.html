@@ -230,7 +230,7 @@ async function chamarGroq(apiKey, form, terminal){
     :"- Não solicitado";
   var cientes=form.cientes.filter(function(c){return c.nome;}).map(function(c){return "- "+c.cargo+" "+c.nome+" – RE "+c.re;}).join("\n")||"- Não informado";
 
-  var prompt="Você é um agente especializado em redigir relatórios de ocorrências de mal súbito em terminais de transporte público.\n\nRedija um relatório formal em português, em parágrafos corridos, sem listas, sem markdown, sem asteriscos e sem títulos. Linguagem institucional, objetiva e juridicamente segura.\n\nREGRAS:\n1. Nunca afirme diagnósticos. Use \"relatando\", \"queixando-se de\" para conscientes.\n2. INCONSCIENTE: linguagem observacional. Nunca \"queixando-se\". Nunca aceite de condução.\n3. Não mencione idade salvo se relevante.\n4. CPF informado: inclua junto ao RG: \"portador do RG nº X e CPF nº Y\".\n5. Use \"aceitou ser conduzido\".\n6. Sinais vitais não aferidos: registre \"não foram aferidos os sinais vitais do usuário.\"\n7. Encerramento objetivo.\n8. INCONSCIENTE: SAMU como acionamento imediato.\n\n"+(terminal?"TERMINAL: "+terminal+"\n":"")+"CONSCIÊNCIA: "+(inc?"INCONSCIENTE":"CONSCIENTE")+"\n\nDADOS:\n- Nº: "+(form.numeroOC||"—")+"\n- Horário: "+form.horarioOcorrencia+"\n- Nome: "+form.nomeUsuario+"\n- RG: "+(form.rgUsuario||"não informado")+"\n- CPF: "+(form.cpfUsuario||"não informado")+"\n- Local: "+form.localOcorrencia+"\n- Identificação: "+(form.quemChamou||"não informado")+"\n\nCLÍNICO:\n- "+(inc?"Observado":"Relatado")+": "+form.situacaoUsuario+"\n- Sinais: "+(form.sinaisVitais||"não aferidos")+"\n- Cadeira: "+(form.precisaCadeira==="sim"?"Sim":"Não")+"\n"+(inc?"- Inconsciente":"- Consciência: "+(form.nivelConsciente||"orientado")+"\n- Condução: "+(form.aceitaConducao==="sim"?"Aceitou":form.aceitaConducao==="nao"?"Recusou":"N/A"))+"\n- Destino: "+(form.hospitalDestino||"não informado")+"\n\nEQUIPE:\n"+eq+"\n\nSAMU:\n"+samu+"\n\nDESFECHO:\n- Finalização: "+(form.horarioFinalizacao||"não informado")+"\n- Obs: "+(form.observacoesFinais||"nenhuma")+"\n\nCIENTES:\n"+cientes+"\n\nEscreva APENAS o relatório. Sem markdown. Ao final: \"Ocorrência finalizada às [horário].\" e cientes.";
+  var prompt="Você é um agente especializado em redigir relatórios de ocorrências de mal súbito em terminais de transporte público.\n\nRedija um relatório formal em português, em parágrafos corridos, sem listas, sem markdown, sem asteriscos e sem títulos. Linguagem institucional, objetiva e juridicamente segura.\n\nREGRAS:\n1. Nunca afirme diagnósticos. Use \"relatando\", \"queixando-se de\" para conscientes.\n2. INCONSCIENTE: linguagem observacional. Nunca \"queixando-se\". Nunca aceite de condução.\n3. Não mencione idade salvo se relevante.\n4. CPF informado: inclua junto ao RG: \"portador do RG nº X e CPF nº Y\".\n5. Use \"aceitou ser conduzido\".\n6. Sinais vitais não aferidos: registre \"não foram aferidos os sinais vitais do usuário.\"\n7. Encerramento objetivo.\n8. INCONSCIENTE: SAMU como acionamento imediato.\n9. OBRIGATÓRIO: o relatório deve SEMPRE iniciar com: \"Venho informar que por volta das [horário],\\\" — nunca comece com \"Por volta das\".\n\n"+(terminal?"TERMINAL: "+terminal+"\n":"")+"CONSCIÊNCIA: "+(inc?"INCONSCIENTE":"CONSCIENTE")+"\n\nDADOS:\n- Nº: "+(form.numeroOC||"—")+"\n- Horário: "+form.horarioOcorrencia+"\n- Nome: "+form.nomeUsuario+"\n- RG: "+(form.rgUsuario||"não informado")+"\n- CPF: "+(form.cpfUsuario||"não informado")+"\n- Local: "+form.localOcorrencia+"\n- Identificação: "+(form.quemChamou||"não informado")+"\n\nCLÍNICO:\n- "+(inc?"Observado":"Relatado")+": "+form.situacaoUsuario+"\n- Sinais: "+(form.sinaisVitais||"não aferidos")+"\n- Cadeira: "+(form.precisaCadeira==="sim"?"Sim":"Não")+"\n"+(inc?"- Inconsciente":"- Consciência: "+(form.nivelConsciente||"orientado")+"\n- Condução: "+(form.aceitaConducao==="sim"?"Aceitou":form.aceitaConducao==="nao"?"Recusou":"N/A"))+"\n- Destino: "+(form.hospitalDestino||"não informado")+"\n\nEQUIPE:\n"+eq+"\n\nSAMU:\n"+samu+"\n\nDESFECHO:\n- Finalização: "+(form.horarioFinalizacao||"não informado")+"\n- Obs: "+(form.observacoesFinais||"nenhuma")+"\n\nCIENTES:\n"+cientes+"\n\nEscreva APENAS o relatório. Comece SEMPRE com: \"Venho informar que por volta das [horário],\" — nunca use outra abertura. Sem markdown. Ao final: \"Ocorrência finalizada às [horário].\" e cientes.";
 
   var res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
     method:"POST",
@@ -245,6 +245,9 @@ async function chamarGroq(apiKey, form, terminal){
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
+var uidCounter = 0;
+function nextUid() { return "uid-" + (++uidCounter); }
+
 function el(tag,props,children){
   var e=document.createElement(tag);
   if(props) Object.keys(props).forEach(function(k){
@@ -264,7 +267,7 @@ function el(tag,props,children){
 }
 
 function inp(label,val,onChange,ph,hint){
-  var fid="inp-"+(++_inpCounter);
+  var fid=nextUid();
   var d=el("div",{className:"field"});
   d.appendChild(el("label",null,label));
   if(hint) d.appendChild(el("span",{className:"hint"},hint));
@@ -277,7 +280,7 @@ function inp(label,val,onChange,ph,hint){
 }
 
 function ta(label,val,onChange,ph,hint,rows){
-  var fid="ta-"+(++_inpCounter);
+  var fid=nextUid();
   var d=el("div",{className:"field"});
   d.appendChild(el("label",null,label));
   if(hint) d.appendChild(el("span",{className:"hint"},hint));
@@ -303,7 +306,6 @@ function radio(label,val,opts,onChange){
 }
 
 function dlist(items,onChange,fields,addLabel,cols){
-  // onChange(newItems, silent) - silent=true means no full re-render
   var wrap=el("div",{className:"dlist"});
   var colStyle=cols||(fields.length===2?"1fr 1fr":"1fr 1fr 1fr");
 
@@ -324,8 +326,8 @@ function dlist(items,onChange,fields,addLabel,cols){
         fd.appendChild(el("label",null,f.label));
         var inp2=document.createElement("input");
         inp2.type="text"; inp2.value=item[f.key]||""; inp2.placeholder=f.ph||f.label;
-        inp2.dataset.fid="dl-"+(++_inpCounter);
-        inp2.addEventListener("input",function(){item[f.key]=inp2.value;onChange(items.slice(),true);var btn=document.querySelector(".btn-primary");if(btn)btn.disabled=!canNext();});
+        inp2.dataset.fid=nextUid();  // unique ID for focus tracking
+        inp2.addEventListener("input",function(){item[f.key]=inp2.value;onChange(items.slice(),true);});
         fd.appendChild(inp2);
         fg.appendChild(fd);
       });
@@ -354,7 +356,7 @@ function fotoUpload(fotos,onChange){
     if(fotos.length<2){
       var lbl=el("label",{className:"foto-lbl"});
       lbl.appendChild(el("div",{className:"foto-area"},"📷 Câmera ou Galeria"));
-      var fi=el("input",{type:"file",accept:"image/*",multiple:fotos.length===0});
+      var fi=el("input",{type:"file",accept:"image/*",multiple:false});
       fi.addEventListener("change",function(){
         var files=Array.from(fi.files);
         var rem=2-fotos.length;
@@ -397,7 +399,6 @@ function showToast(msg){
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 var draft=lsJSON(DRAFT_KEY,null);
-var _inpCounter=0;
 var STATE={
   tema:ls(THEME_KEY,"dark"),
   tela:"form",
@@ -419,16 +420,13 @@ function setState(patch){Object.assign(STATE,patch);render();}
 var STEPS=["Dados","Clínico","Equipe","SAMU","Desfecho","Relatório"];
 
 function render(){
-  _inpCounter=0; // Reset counter so fids are consistent each render
   document.body.className=STATE.tema==="light"?"light":"";
   var app=document.getElementById("app");
-  // Save focused element info before re-render
   var focused=document.activeElement;
   var focusedId=focused&&focused.dataset?focused.dataset.fid:null;
   var focusedPos=focused&&focused.selectionStart!==undefined?focused.selectionStart:null;
   app.innerHTML="";
   app.appendChild(buildUI());
-  // Restore focus after re-render
   if(focusedId){
     var el2=app.querySelector("[data-fid='"+focusedId+"']");
     if(el2){el2.focus();if(focusedPos!==null&&el2.setSelectionRange)el2.setSelectionRange(focusedPos,focusedPos);}
@@ -462,7 +460,7 @@ function buildUI(){
   var tb=el("div",{className:"terminal-bar"});
   tb.appendChild(el("label",null,"Terminal"));
   var ti=el("input",{type:"text",value:STATE.terminal,placeholder:"Ex: Terminal Jabaquara"});
-  ti.addEventListener("input",function(){STATE.terminal=ti.value;lsSet(TERM_KEY,ti.value);/* no render */});
+  ti.addEventListener("input",function(){STATE.terminal=ti.value;lsSet(TERM_KEY,ti.value);});
   tb.appendChild(ti);
   wrap.appendChild(tb);
 
@@ -475,7 +473,7 @@ function buildUI(){
       ab.appendChild(ap);
       var kr=el("div",{className:"key-row"});
       var ki=el("input",{type:"password",value:STATE.apiKey,placeholder:"gsk_..."});
-      ki.addEventListener("input",function(){STATE.apiKey=ki.value;/* no render */});
+      ki.addEventListener("input",function(){STATE.apiKey=ki.value;});
       var ks=el("button",{className:"btn-save"},"Salvar");
       ks.disabled=STATE.apiKey.length<10;
       ki.addEventListener("input",function(){ks.disabled=ki.value.length<10;});
@@ -543,7 +541,6 @@ function buildUI(){
 function updateForm(k,v){
   STATE.form[k]=v;
   lsJSONSet(DRAFT_KEY,STATE.form);
-  // Update next button state without full re-render
   var btn=document.querySelector(".btn-primary");
   if(btn) btn.disabled=!canNext();
 }
@@ -672,7 +669,7 @@ function buildStep5(){
     var rw=el("div",{className:"rel-wrap"});
     var rta=el("textarea",{className:"rel-ta"});
     rta.value=STATE.relatorio;
-    rta.addEventListener("input",function(){STATE.relatorio=rta.value;/* no render */});
+    rta.addEventListener("input",function(){STATE.relatorio=rta.value;});
     rw.appendChild(rta);
     rw.appendChild(el("span",{className:"edit-badge"},"editável"));
     c.appendChild(rw);
@@ -769,7 +766,7 @@ function buildModal(item){
   var rw=el("div",{className:"rel-wrap"});
   var rta=el("textarea",{className:"rel-ta"});
   rta.value=relText;
-  rta.addEventListener("input",function(){relText=rta.value;/* no render */});
+  rta.addEventListener("input",function(){relText=rta.value;});
   rw.appendChild(rta);
   rw.appendChild(el("span",{className:"edit-badge"},"editável"));
   modal.appendChild(rw);
